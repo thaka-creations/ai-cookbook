@@ -9,6 +9,8 @@ from openai import OpenAI
 
 client = OpenAI()
 
+# The server will emit server-sent events to the client as the response is generated
+# messages: list of messages comprising the conversation so far
 stream = client.chat.completions.create(
     model="gpt-4.1",
     messages=[{"role": "user", "content": "Hello, how are you?"}],
