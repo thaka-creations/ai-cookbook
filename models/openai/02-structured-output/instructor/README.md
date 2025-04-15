@@ -40,5 +40,100 @@ message = response.choices[0].message.content
 type(message)
 
 message_dict = json.loads(message)
-type(message_dict)```
+type(message_dict)
+```
 
+It's important to note that OpenAI does not guarantee that the output text will have your specified JSON format. It only ensures that the output will be a valid string that can be parsed to JSON.
+
+### API Reference
+- **response_format**: An object specifying the format that the model must output. 
+
+Important: When using JSON mode, you must also instruct the model to produce JSON yourself via a system or user message.
+Without this, the model may generate an unending stream of whitespace until the generation reaches the token limit, resulting in a long-running and seemingly "stuck" request.
+Also note that the message content may be partially cut off if finish_reason="length", which indicates the generation exceeded max_tokens or the conversation exceeded the max context length.
+
+## Function Calling
+-------------------
+__Function Calling__ allows you to provide a list of functions that the model can call.
+You can specify the function name, description and parameters, including their types and required fields.
+Find more examples in this [Cookbook](https://cookbook.openai.com/examples/how_to_call_functions_with_chat_models)
+
+Here's an example of using function calling:
+
+```
+query = "Hi there, I have a question about my bill. Can you help me?"
+
+function_name = "chat"
+
+tools = [
+    {
+        "type": "function",
+        "function": {
+            "name": function_name,
+            "description": f"Function to respond to a customer query.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "content": {
+                        "type": "string",
+                        "description": "Your reply that we send to the customer.",
+                    },
+                    "category": {
+                        "type": "string",
+                        "enum": ["general", "order", "billing"],
+                        "description": "Category of the ticket.",
+                    },
+                },
+                "required": ["content", "category"],
+            },
+        },
+    }
+]
+
+messages = [
+    {
+        "role": "system",
+        "content": "You're a helpful customer care assistant that can classify incoming messages and create a response.",
+    },
+    {
+        "role": "user",
+        "content": query,
+    },
+]
+
+response = client.chat.completions.create(
+    model="gpt-3.5-turbo",
+    messages=messages,
+    tools=tools,
+    tool_choice={"type": "function", "function": {"name": function_name}},
+)
+
+tool_call = response.choices[0].message.tool_calls[0]
+type(tool_call)  # ChatCompletionMessageToolCall
+
+function_args = json.loads(tool_call.function.arguments)
+type(function_args)  # dict
+```
+
+### API Reference
+- **tools**: A list of tools the model may call. Currently, only functions are supported as a tool. Use this to provide a list of functions the model may generate JSON inputs for. A max of 128 functions are supported.
+- **tool_choice**: Controls which (if any) tool is called by the model. **none** means the model will not call any tool and instead generates a message.
+**auto** means the model can pick between generating a message or calling one or more tools.
+**required** means the model must call one or more tools.
+Specifying a particular tool via ```{"type": "function", "function": {"name": "my_function"}} forces the model to call that tool.
+None is the default when no tools are present.
+**Auto** is the default if tools are present.
+
+## When to Use Each Approach
+----------------------------
+1. **Function calling**: If your use case can be framed to use function calling, it is recommended to use it. OpenAI will automatically optimize your prompt according to the specified functions, and the language models were trained with this prompt format. This increases the likelihood of better responses and reduces the frequency of hallucinations.
+Additionally, the reponse comes parsed in **ChatCompletionMessageToolCall** objects, which is convenient.
+2. **JSON Mode**: JSON mode is a more flexible capability that forces the LLM to always output a valid JSON string, but the JSON structure is arbitrary. It's useful when you need JSON output but don't want to specify the exact structure.
+
+- Keep in mind that the LLM can still hallucinate in both approaches. In function calling, the LLM may ignore your instructions and output free-form text instead of using functions, or it may hallucinate argument names and values.
+- In JSON mode, the LLM always produces JSON, but the specified format may not be respected.
+
+## Conclusion
+-------------
+Function calling provides more control and is recommended when possible, while JSOn mode offers flexibility when the exact structure is not critical.
+However, if you want even more control over your outputs, [Instructor](https://github.com/daveebbelaar/openai-python-tutorial/tree/main/04%20Structured%20Output/Instructor) is the way to go.
