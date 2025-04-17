@@ -54,7 +54,7 @@ messages = [
 
 
 response = client.chat.completions.create(
-    model="gpt-4.1",
+    model="gpt-3.5-turbo",
     messages=messages,
     tools=tools,
     tool_choice={"type": "function", "function": {"name": function_name}},
@@ -71,7 +71,7 @@ send_reply(function_args["content"])
 
 
 # --------------------------------
-# Chaning the schema, not resulting in an error
+# Changing the schema, not resulting in an error
 # --------------------------------
 
 query = """
@@ -116,7 +116,7 @@ messages = [
 ]
 
 response = client.chat.completions.create(
-    model="gpt-4.1",
+    model="gpt-4.1-mini",
     messages=messages,
     tools=tools,
     tool_choice={"type": "function", "function": {"name": function_name}},
