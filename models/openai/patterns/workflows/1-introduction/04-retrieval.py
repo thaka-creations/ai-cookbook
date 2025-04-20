@@ -43,10 +43,12 @@ tools = [
     }
 ]
 
+system_prompt = "You are a helpful assistant that answers questions from the knowledge base about our e-commerce store."
+
 messages = [
     {
         "role": "system",
-        "content": "You are a helpful assistant that answers questions from the knowledge base about our e-commerce store.",
+        "content": system_prompt,
     },
     {"role": "user", "content": "What is the return policy?"},
 ]
@@ -93,3 +95,21 @@ response_2 = client.responses.parse(
 )
 
 print(response_2.output_text)
+print("answer:", response_2.output[0].content[0].parsed.answer)
+print("source:", response_2.output[0].content[0].parsed.source)
+
+# ----------------------------------
+# Question that doesn't trigger the tool
+# ----------------------------------
+messages = [
+    {"role": "system", "content": system_prompt},
+    {"role": "user", "content": "What is the weather in Tokyo?"},
+]
+
+response_3 = client.responses.create(
+    model="gpt-4.1-mini",
+    input=messages,
+    tools=tools,
+)
+
+print(response_3.output_text)
