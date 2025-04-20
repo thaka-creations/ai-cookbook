@@ -1,3 +1,4 @@
+import json
 import requests
 from openai import OpenAI
 from pydantic import BaseModel
@@ -8,28 +9,23 @@ client = OpenAI()
 # ----------------------------------
 # Define the tool (function) that we want to call
 # ----------------------------------
-
-
 def get_weather(latitude, longitude):
-    """This is a publically available API that returns the weather for a given location."""
     response = requests.get(
         f"https://api.open-meteo.com/v1/forecast?latitude={latitude}&longitude={longitude}&current=temperature_2m,wind_speed_10m&hourly=temperature_2m,relative_humidity_2m,wind_speed_10m"
     )
     data = response.json()
-    print("data", data)
-    return data["current"]
+    return data["current"]["temperature_2m"]
 
 
 # ----------------------------------
 # Call the model
 # ----------------------------------
 
-
 tools = [
     {
         "type": "function",
         "name": "get_weather",
-        "description": "Get the weather for a given location",
+        "description": "Get current temperature for provided coordinates in celsius.",
         "parameters": {
             "type": "object",
             "properties": {
@@ -43,16 +39,46 @@ tools = [
     }
 ]
 
-messages = [
-    {"role": "system", "content": "You are a helpful weather assistant."},
-    {"role": "user", "content": "What's the weather like in Ruiru today?"},
+input_messages = [
+    {"role": "user", "content": "What's the weather like in Ruaka today?"}
 ]
 
 response = client.responses.create(
     model="gpt-4.1-mini",
-    input=messages,
+    input=input_messages,
     tools=tools,
 )
 
 print(response.output_text)
 print(response.model_dump_json(indent=2))
+
+# ----------------------------------
+# Execute get_weather function
+# ----------------------------------
+
+tool_call = response.output[0]
+args = json.loads(tool_call.arguments)
+
+result = get_weather(args["latitude"], args["longitude"])
+print(result)
+
+# ----------------------------------
+# Supply the result and call the model again
+# ----------------------------------
+
+input_messages.append(tool_call)  # append model's function call message
+input_messages.append(
+    {
+        "type": "function_call_output",
+        "call_id": tool_call.call_id,
+        "output": str(result),
+    }
+)
+
+response_2 = client.responses.create(
+    model="gpt-4.1-mini",
+    input=input_messages,
+    tools=tools,
+)
+
+print(response_2.output_text)
